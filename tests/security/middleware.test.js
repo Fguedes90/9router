@@ -19,6 +19,7 @@ describe("middleware (path classification)", () => {
     assert.strictEqual(isPublicApiPath("/api/providers"), false);
     assert.strictEqual(isPublicApiPath("/api/sync/cloud"), false);
     assert.strictEqual(isPublicApiPath("/api/cli-tools/antigravity-mitm"), false);
+    assert.strictEqual(isPublicApiPath("/api/cli-tools/opencode-settings"), false);
     assert.strictEqual(isPublicApiPath("/api/oauth/claude/authorize"), false);
   });
 
