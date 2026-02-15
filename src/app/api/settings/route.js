@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/localDb";
+import { filterAllowedSettings } from "@/lib/settingsAllowlist";
 import bcrypt from "bcryptjs";
 
 export async function GET() {
@@ -52,7 +53,8 @@ export async function PATCH(request) {
       delete body.currentPassword;
     }
 
-    const settings = await updateSettings(body);
+    const updates = filterAllowedSettings(body);
+    const settings = await updateSettings(updates);
     const { password, ...safeSettings } = settings;
     return NextResponse.json(safeSettings);
   } catch (error) {

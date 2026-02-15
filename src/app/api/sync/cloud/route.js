@@ -204,9 +204,11 @@ async function handleDisable(machineId, request) {
     return NextResponse.json({ error: "Failed to disable cloud" }, { status: 502 });
   }
 
-  // Update Claude CLI settings to use local endpoint
-  const host = request.headers.get("host") || "localhost:20128";
-  await updateClaudeSettingsToLocal(machineId, host, cloudUrl);
+  // Use configured base URL, not Host header (avoid poisoning via spoofed Host)
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || "";
+  const port = process.env.PORT || "20128";
+  const localBase = baseUrl || `http://localhost:${port}`;
+  await updateClaudeSettingsToLocal(machineId, localBase, cloudUrl);
 
   return NextResponse.json({
     success: true,
@@ -217,11 +219,11 @@ async function handleDisable(machineId, request) {
 /**
  * Update Claude CLI settings to use local endpoint (only if currently using cloud)
  */
-async function updateClaudeSettingsToLocal(machineId, host, cloudUrl) {
+async function updateClaudeSettingsToLocal(machineId, localBaseUrl, cloudUrl) {
   try {
     const settingsPath = path.join(os.homedir(), ".claude", "settings.json");
     const cloudEndpoint = `${cloudUrl}/${machineId}`;
-    const localUrl = `http://${host}`;
+    const localUrl = localBaseUrl.startsWith("http") ? localBaseUrl : `http://${localBaseUrl}`;
 
     // Read current settings
     let settings;

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "next dev --webpack --port 20128",
     "build": "next build --webpack",
-    "start": "next start"
+    "start": "next start",
+    "test": "node --test tests/**/*.test.js",
+    "test:security": "node --test tests/security/*.test.js"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

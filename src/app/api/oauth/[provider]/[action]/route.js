@@ -6,6 +6,7 @@ import {
   requestDeviceCode, 
   pollForToken 
 } from "@/lib/oauth/providers";
+import { getAllowedRedirectUri } from "@/lib/oauth/utils/redirectUri";
 import { createProviderConnection, isCloudEnabled } from "@/models";
 import { getConsistentMachineId } from "@/shared/utils/machineId";
 import { syncToCloud } from "@/app/api/sync/cloud/route";
@@ -23,7 +24,15 @@ export async function GET(request, { params }) {
     const { searchParams } = new URL(request.url);
 
     if (action === "authorize") {
-      const redirectUri = searchParams.get("redirect_uri") || "http://localhost:8080/callback";
+      const requestedRedirectUri = searchParams.get("redirect_uri");
+      const origin = request.nextUrl?.origin || new URL(request.url).origin;
+      const redirectUri = getAllowedRedirectUri(origin, requestedRedirectUri);
+      if (!redirectUri) {
+        return NextResponse.json(
+          { error: "redirect_uri not allowed. Use same-origin /callback or localhost." },
+          { status: 400 }
+        );
+      }
       const authData = generateAuthData(provider, redirectUri);
       return NextResponse.json(authData);
     }
