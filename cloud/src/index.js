@@ -133,7 +133,7 @@ const worker = {
       if (path === "/v1/responses" && request.method === "POST") {
         const response = await handleChat(request, env, ctx, null);
         log.response(response.status, Date.now() - startTime);
-        return response;
+        return addCorsHeaders(response, env, request);
       }
 
       // New format: /v1/verify
