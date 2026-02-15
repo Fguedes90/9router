@@ -831,6 +831,7 @@ export async function getPricingForModel(provider, model) {
     antigravity: "ag",
     github: "gh",
     kiro: "kr",
+    cursor: "cu",
     openai: "openai",
     anthropic: "anthropic",
     gemini: "gemini",

@@ -281,6 +281,10 @@ export default function ProviderDetailPage() {
           onCopy={copy}
           onSetAlias={handleSetAlias}
           onDeleteAlias={handleDeleteAlias}
+          connections={providerId === "cursor" ? connections : undefined}
+          description={providerId === "cursor" ? "Choose which Cursor model to use: add a model ID or import from the Cursor API. Use «default» for server-chosen model." : undefined}
+          addModelPlaceholder={providerId === "cursor" ? "default or e.g. claude-4-sonnet-thinking" : undefined}
+          importLabel="Import from /models"
         />
       );
     }
@@ -580,9 +584,21 @@ ModelRow.propTypes = {
   onCopy: PropTypes.func.isRequired,
 };
 
-function PassthroughModelsSection({ providerAlias, modelAliases, copied, onCopy, onSetAlias, onDeleteAlias }) {
+function PassthroughModelsSection({
+  providerAlias,
+  modelAliases,
+  copied,
+  onCopy,
+  onSetAlias,
+  onDeleteAlias,
+  connections = [],
+  description,
+  addModelPlaceholder,
+  importLabel = "Import from /models",
+}) {
   const [newModel, setNewModel] = useState("");
   const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   // Filter aliases for this provider - models are persisted via alias
   const providerAliases = Object.entries(modelAliases).filter(
@@ -597,24 +613,31 @@ function PassthroughModelsSection({ providerAlias, modelAliases, copied, onCopy,
 
   // Generate default alias from modelId (last part after /)
   const generateDefaultAlias = (modelId) => {
-    const parts = modelId.split("/");
-    return parts[parts.length - 1];
+    const parts = String(modelId).split("/");
+    return parts[parts.length - 1] || modelId;
+  };
+
+  const resolveImportAlias = (modelId) => {
+    const base = generateDefaultAlias(modelId);
+    if (!modelAliases[base]) return base;
+    const prefixed = `${providerAlias}-${base}`;
+    if (!modelAliases[prefixed]) return prefixed;
+    return null;
   };
 
   const handleAdd = async () => {
     if (!newModel.trim() || adding) return;
     const modelId = newModel.trim();
     const defaultAlias = generateDefaultAlias(modelId);
-    
-    // Check if alias already exists
+
     if (modelAliases[defaultAlias]) {
       alert(`Alias "${defaultAlias}" already exists. Please use a different model or edit existing alias.`);
       return;
     }
-    
+
     setAdding(true);
     try {
-      await onSetAlias(modelId, defaultAlias);
+      await onSetAlias(modelId, defaultAlias, providerAlias);
       setNewModel("");
     } catch (error) {
       console.log("Error adding model:", error);
@@ -623,23 +646,82 @@ function PassthroughModelsSection({ providerAlias, modelAliases, copied, onCopy,
     }
   };
 
+  const handleImport = async () => {
+    if (importing || !connections?.length) return;
+    const activeConnection = connections.find((c) => c.isActive !== false);
+    if (!activeConnection) {
+      alert("No active connection. Add and connect a Cursor account first.");
+      return;
+    }
+    setImporting(true);
+    try {
+      const res = await fetch(`/api/providers/${activeConnection.id}/models`);
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || data.message || "Failed to import models");
+        return;
+      }
+      const list = data.models || [];
+      if (list.length === 0) {
+        alert("No models returned. Using «default» is recommended. See docs/CURSOR_MODELS.md.");
+        return;
+      }
+      let imported = 0;
+      for (const m of list) {
+        const modelId = m.id ?? m.name ?? m;
+        if (!modelId) continue;
+        const alias = resolveImportAlias(modelId);
+        if (!alias) continue;
+        await onSetAlias(modelId, alias, providerAlias);
+        imported += 1;
+      }
+      if (imported === 0) alert("No new models added (all already present).");
+    } catch (err) {
+      console.log("Error importing models:", err);
+      alert(err.message || "Import failed");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const canImport = connections?.some((c) => c.isActive !== false);
+  const defaultDescription = "Add model IDs and create aliases for quick access.";
+  const defaultPlaceholder = "e.g. anthropic/claude-3-opus";
+
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-text-muted">
-        OpenRouter supports any model. Add models and create aliases for quick access.
+        {description ?? defaultDescription}
       </p>
+
+      {/* Import (when connections provided, e.g. Cursor) */}
+      {connections?.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            icon="download"
+            onClick={handleImport}
+            disabled={!canImport || importing}
+          >
+            {importing ? "Importing…" : importLabel}
+          </Button>
+          {!canImport && (
+            <span className="text-xs text-text-muted">Connect an account to import</span>
+          )}
+        </div>
+      )}
 
       {/* Add new model */}
       <div className="flex items-end gap-2">
         <div className="flex-1">
-          <label htmlFor="new-model-input" className="text-xs text-text-muted mb-1 block">Model ID (from OpenRouter)</label>
+          <label htmlFor="new-model-input" className="text-xs text-text-muted mb-1 block">Model ID</label>
           <input
             id="new-model-input"
             type="text"
             value={newModel}
             onChange={(e) => setNewModel(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            placeholder="anthropic/claude-3-opus"
+            placeholder={addModelPlaceholder ?? defaultPlaceholder}
             className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:border-primary"
           />
         </div>
@@ -674,6 +756,10 @@ PassthroughModelsSection.propTypes = {
   onCopy: PropTypes.func.isRequired,
   onSetAlias: PropTypes.func.isRequired,
   onDeleteAlias: PropTypes.func.isRequired,
+  connections: PropTypes.array,
+  description: PropTypes.string,
+  addModelPlaceholder: PropTypes.string,
+  importLabel: PropTypes.string,
 };
 
 function PassthroughModelRow({ modelId, fullModel, copied, onCopy, onDeleteAlias }) {

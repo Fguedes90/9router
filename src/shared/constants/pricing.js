@@ -716,7 +716,12 @@ export const DEFAULT_PRICING = {
       reasoning: 3.00,
       cache_creation: 0.50
     }
-  }
+  },
+
+  // Cursor IDE (cu) – only default model is supported by Cursor API
+  cu: {
+    default: { input: 0, output: 0, cached: 0, reasoning: 0, cache_creation: 0 },
+  },
 };
 
 /**

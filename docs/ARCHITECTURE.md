@@ -455,7 +455,7 @@ Specialized executors:
 - `github`
 - `kiro`
 - `codex`
-- `cursor`
+- `cursor` (see [Cursor models](CURSOR_MODELS.md) for how Cursor exposes model IDs)
 
 Default executor path:
 

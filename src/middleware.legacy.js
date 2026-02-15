@@ -1,3 +1,7 @@
+/**
+ * Legacy middleware – logic moved to proxy.js for Next.js 16 (middleware + proxy conflict).
+ * Kept for reference only; Next uses src/proxy.js.
+ */
 import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { isPublicApiPath } from "./lib/middlewareAuth.js";
@@ -17,12 +21,9 @@ function isDefaultJwtSecret() {
 export default async function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  // Public API and v1 proxy (API key auth in handler)
   if (pathname.startsWith("/v1") || isPublicApiPath(pathname)) {
     return NextResponse.next();
   }
-
-  // In production, refuse to verify if JWT_SECRET is still default (misconfiguration)
   if (pathname.startsWith("/api/") && isProduction() && isDefaultJwtSecret()) {
     return NextResponse.json(
       { error: "Server misconfigured: set JWT_SECRET in production" },
@@ -33,47 +34,33 @@ export default async function middleware(request) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Protect dashboard and all other API routes with session
   const token = request.cookies.get("auth_token")?.value;
   let validSession = false;
   if (token) {
     try {
       await jwtVerify(token, SECRET);
       validSession = true;
-    } catch {
-      // invalid or expired
-    }
+    } catch {}
   }
 
-  // Dashboard: redirect to login if no valid session and requireLogin is true
   if (pathname.startsWith("/dashboard") || pathname === "/") {
     if (validSession) {
-      if (pathname === "/") {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-      }
+      if (pathname === "/") return NextResponse.redirect(new URL("/dashboard", request.url));
       return NextResponse.next();
     }
     try {
-      const origin = request.nextUrl.origin;
-      const res = await fetch(`${origin}/api/settings/require-login`);
+      const res = await fetch(`${request.nextUrl.origin}/api/settings/require-login`);
       const data = await res.json();
       if (data.requireLogin === false) {
-        if (pathname === "/") {
-          return NextResponse.redirect(new URL("/dashboard", request.url));
-        }
+        if (pathname === "/") return NextResponse.redirect(new URL("/dashboard", request.url));
         return NextResponse.next();
       }
-    } catch {
-      // On error, require login
-    }
+    } catch {}
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Protected /api/*: require valid session
   if (pathname.startsWith("/api/")) {
-    if (!validSession) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!validSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     return NextResponse.next();
   }
 
@@ -81,10 +68,5 @@ export default async function middleware(request) {
 }
 
 export const config = {
-  matcher: [
-    "/",
-    "/dashboard/:path*",
-    "/api/:path*",
-    "/v1/:path*",
-  ],
+  matcher: ["/", "/dashboard/:path*", "/api/:path*", "/v1/:path*"],
 };

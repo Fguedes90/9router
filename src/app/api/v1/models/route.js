@@ -1,4 +1,4 @@
-import { PROVIDER_MODELS, PROVIDER_ID_TO_ALIAS } from "@/shared/constants/models";
+import { PROVIDER_MODELS, PROVIDER_ID_TO_ALIAS, getModelLimits } from "@/shared/constants/models";
 import { getProviderConnections, getCombos } from "@/lib/localDb";
 
 /**
@@ -71,7 +71,8 @@ export async function GET() {
       }
 
       for (const model of providerModels) {
-        models.push({
+        const limits = getModelLimits(alias, model.id);
+        const entry = {
           id: `${alias}/${model.id}`,
           object: "model",
           created: timestamp,
@@ -79,7 +80,10 @@ export async function GET() {
           permission: [],
           root: model.id,
           parent: null,
-        });
+        };
+        if (limits?.context_length != null) entry.context_length = limits.context_length;
+        if (limits?.max_output_tokens != null) entry.max_output_tokens = limits.max_output_tokens;
+        models.push(entry);
       }
     }
 

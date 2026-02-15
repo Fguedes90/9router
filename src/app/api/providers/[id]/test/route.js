@@ -57,6 +57,10 @@ const OAUTH_TEST_CONFIG = {
     checkExpiry: true,
     refreshable: true,
   },
+  cursor: {
+    checkExpiry: true,
+    // Cursor uses imported token; no public refresh, validated at import
+  },
 };
 
 /**

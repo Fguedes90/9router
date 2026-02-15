@@ -6,9 +6,9 @@ import { createStreamController, pipeWithDisconnect } from "../utils/streamHandl
 import { addBufferToUsage, filterUsageForFormat } from "../utils/usageTracking.js";
 import { refreshWithRetry } from "../services/tokenRefresh.js";
 import { createRequestLogger } from "../utils/requestLogger.js";
-import { getModelTargetFormat, PROVIDER_ID_TO_ALIAS } from "../config/providerModels.js";
+import { getModelTargetFormat, getModelLimits, PROVIDER_ID_TO_ALIAS } from "../config/providerModels.js";
 import { createErrorResult, parseUpstreamError, formatProviderError } from "../utils/error.js";
-import { HTTP_STATUS } from "../config/constants.js";
+import { HTTP_STATUS, DEFAULT_MAX_TOKENS } from "../config/constants.js";
 import { handleBypassRequest } from "../utils/bypassHandler.js";
 import { saveRequestUsage, trackPendingRequest, appendRequestLog, saveRequestDetail } from "@/lib/usageDb.js";
 import { getExecutor } from "../executors/index.js";
@@ -350,6 +350,15 @@ function parseSSEToOpenAIResponse(rawSSE, fallbackModel) {
 export async function handleChatCore({ body, modelInfo, credentials, log, onCredentialsRefreshed, onRequestSuccess, onDisconnect, clientRawRequest, connectionId, userAgent, apiKey }) {
   const { provider, model } = modelInfo;
   const requestStartTime = Date.now();
+
+  // Cap max_tokens to model limit when defined (e.g. Cursor/Claude context limits)
+  const limits = getModelLimits(provider, model);
+  if (limits?.max_output_tokens != null) {
+    const requested = body.max_tokens ?? body.max_completion_tokens ?? DEFAULT_MAX_TOKENS;
+    const cap = Math.min(requested, limits.max_output_tokens);
+    body = { ...body, max_tokens: cap };
+    if (body.max_completion_tokens != null) body.max_completion_tokens = cap;
+  }
 
   const sourceFormat = detectFormat(body);
 

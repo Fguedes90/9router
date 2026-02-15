@@ -101,15 +101,8 @@ export const PROVIDER_MODELS = {
     { id: "claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
     { id: "claude-haiku-4.5", name: "Claude Haiku 4.5" },
   ],
-  cu: [  // Cursor IDE
+  cu: [  // Cursor IDE (only default is accepted by Cursor API; named models return "AI Model Not Found")
     { id: "default", name: "Auto (Server Picks)" },
-    { id: "claude-4.5-opus-high-thinking", name: "Claude 4.5 Opus High Thinking" },
-    { id: "claude-4.5-opus-high", name: "Claude 4.5 Opus High" },
-    { id: "claude-4.5-sonnet-thinking", name: "Claude 4.5 Sonnet Thinking" },
-    { id: "claude-4.5-sonnet", name: "Claude 4.5 Sonnet" },
-    { id: "claude-4.5-haiku", name: "Claude 4.5 Haiku" },
-    { id: "claude-4.5-opus", name: "Claude 4.5 Opus" },
-    { id: "gpt-5.2-codex", name: "GPT 5.2 Codex" },
   ],
 
   // API Key Providers (alias = id)
@@ -156,6 +149,24 @@ export const PROVIDER_MODELS = {
     { id: "MiniMax-M2.1", name: "MiniMax M2.1" },
   ],
 };
+
+/**
+ * Optional per-model limits for exposure in GET /v1/models and request capping.
+ * Keys: provider alias. Values: { [modelId]: { context_length, max_output_tokens } }.
+ * Omitted models use app defaults (e.g. DEFAULT_MAX_TOKENS).
+ */
+export const MODEL_LIMITS = {
+  cu: {
+    default: { context_length: 200000, max_output_tokens: 64000 },
+  },
+};
+
+export function getModelLimits(aliasOrId, modelId) {
+  const alias = PROVIDER_ID_TO_ALIAS[aliasOrId] ?? aliasOrId;
+  const limits = MODEL_LIMITS[alias];
+  if (!limits) return null;
+  return limits[modelId] || limits.default || null;
+}
 
 // Helper functions
 export function getProviderModels(aliasOrId) {

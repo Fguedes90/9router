@@ -160,6 +160,51 @@ export async function GET(request, { params }) {
       });
     }
 
+    // Cursor: try public List Models API (may require team API key; IDE token might not work)
+    if (connection.provider === "cursor") {
+      const token = (connection.accessToken || "").includes("::")
+        ? connection.accessToken.split("::")[1]
+        : (connection.accessToken || "");
+      if (!token) {
+        return NextResponse.json({ error: "No Cursor token" }, { status: 401 });
+      }
+      try {
+        const res = await fetch("https://api.cursor.com/v0/models", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const models = Array.isArray(data.models) ? data.models : [];
+          return NextResponse.json({
+            provider: "cursor",
+            connectionId: connection.id,
+            models: models.map((id) => ({ id, name: id })),
+            source: "api.cursor.com/v0/models",
+          });
+        }
+        const errText = await res.text();
+        console.log("Cursor /v0/models failed:", res.status, errText);
+        return NextResponse.json({
+          provider: "cursor",
+          connectionId: connection.id,
+          models: [{ id: "default", name: "Auto (Server Picks)" }],
+          error: `Cursor models API returned ${res.status}. Using static list. See docs/CURSOR_MODELS.md.`,
+        });
+      } catch (err) {
+        console.log("Cursor models fetch error:", err.message);
+        return NextResponse.json({
+          provider: "cursor",
+          connectionId: connection.id,
+          models: [{ id: "default", name: "Auto (Server Picks)" }],
+          error: err.message,
+        });
+      }
+    }
+
     const config = PROVIDER_MODELS_CONFIG[connection.provider];
     if (!config) {
       return NextResponse.json(
