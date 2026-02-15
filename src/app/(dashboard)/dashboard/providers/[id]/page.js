@@ -618,6 +618,11 @@ function PassthroughModelsSection({
   };
 
   const resolveImportAlias = (modelId) => {
+    // Skip if this exact fullModel is already imported under any alias
+    const fullModel = `${providerAlias}/${modelId}`;
+    const alreadyExists = Object.values(modelAliases).includes(fullModel);
+    if (alreadyExists) return null;
+
     const base = generateDefaultAlias(modelId);
     if (!modelAliases[base]) return base;
     const prefixed = `${providerAlias}-${base}`;
@@ -735,7 +740,7 @@ function PassthroughModelsSection({
         <div className="flex flex-col gap-3">
           {allModels.map(({ modelId, fullModel, alias }) => (
             <PassthroughModelRow
-              key={fullModel}
+              key={alias}
               modelId={modelId}
               fullModel={fullModel}
               copied={copied}
@@ -928,7 +933,7 @@ function CompatibleModelsSection({ providerStorageAlias, providerDisplayAlias, m
         <div className="flex flex-col gap-3">
           {allModels.map(({ modelId, fullModel, alias }) => (
             <PassthroughModelRow
-              key={fullModel}
+              key={alias}
               modelId={modelId}
               fullModel={`${providerDisplayAlias}/${modelId}`}
               copied={copied}
