@@ -60,6 +60,8 @@ export async function PATCH(request) {
     }
 
     const updates = filterAllowedSettings(body);
+    // Password is not in allowlist; only add it when we set it (hashed) in the newPassword block above
+    if (body.password !== undefined) updates.password = body.password;
     const settings = await updateSettings(updates);
     const { password, ...safeSettings } = settings;
     return NextResponse.json(safeSettings);

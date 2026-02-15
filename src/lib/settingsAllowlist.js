@@ -1,6 +1,7 @@
 /**
  * Allowlist of settings keys that can be updated via PATCH /api/settings.
  * Prevents mass assignment of unknown keys.
+ * Note: "password" is intentionally excluded; the route updates it only after hashing (newPassword/currentPassword).
  */
 export const ALLOWED_SETTINGS_KEYS = [
   "cloudEnabled",
@@ -12,7 +13,6 @@ export const ALLOWED_SETTINGS_KEYS = [
   "observabilityBatchSize",
   "observabilityFlushIntervalMs",
   "observabilityMaxJsonSize",
-  "password",
 ];
 
 /**

@@ -13,7 +13,10 @@ describe("ALLOWED_SETTINGS_KEYS", () => {
     assert.ok(ALLOWED_SETTINGS_KEYS.includes("requireLogin"));
     assert.ok(ALLOWED_SETTINGS_KEYS.includes("cloudEnabled"));
     assert.ok(ALLOWED_SETTINGS_KEYS.includes("cloudUrl"));
-    assert.ok(ALLOWED_SETTINGS_KEYS.includes("password"));
+  });
+
+  it("excludes password (route sets it only after hashing via newPassword/currentPassword)", () => {
+    assert.strictEqual(ALLOWED_SETTINGS_KEYS.includes("password"), false);
   });
 });
 
@@ -48,5 +51,11 @@ describe("filterAllowedSettings", () => {
     assert.strictEqual(out.cloudEnabled, true);
     assert.strictEqual(out.requireLogin, true);
     assert.strictEqual(out.observabilityEnabled, false);
+  });
+
+  it("drops client-supplied password (prevents bypass of hashing and current password check)", () => {
+    const body = { password: "plaintext-or-precomputed-hash" };
+    const out = filterAllowedSettings(body);
+    assert.strictEqual("password" in out, false);
   });
 });

@@ -1,9 +1,8 @@
 /**
  * Auth and URL validation for /forward and /forward-raw endpoints.
- * Requires env.FORWARD_SECRET and only allows HTTPS to public hosts (no SSRF).
+ * When FORWARD_SECRET is set in env, requests must send X-Forward-Secret.
+ * When not set, forward endpoints reject (no default secret to avoid bypass).
  */
-
-const DEFAULT_SECRET = "9router-default-forward-secret-change-me";
 
 function isPrivateOrLocalHost(hostname) {
   if (!hostname || typeof hostname !== "string") return true;
@@ -47,15 +46,18 @@ export function validateForwardUrl(targetUrl) {
 
 /**
  * Check Forward-Secret header against env.FORWARD_SECRET.
- * If FORWARD_SECRET is not set or is the default, reject in production use.
+ * Auth is required only when FORWARD_SECRET is set; when not set, reject (no default secret).
  * @param {Request} request
  * @param {Object} env
  * @returns {{ ok: boolean, error?: string }}
  */
 export function checkForwardAuth(request, env) {
-  const secret = env.FORWARD_SECRET ?? DEFAULT_SECRET;
-  const header = request.headers.get("X-Forward-Secret") ?? request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
-  if (!header || header !== secret) {
+  const secret = env?.FORWARD_SECRET?.trim();
+  if (!secret) {
+    return { ok: false, error: "Forward endpoint is not configured (set FORWARD_SECRET)" };
+  }
+  const header = request.headers.get("X-Forward-Secret") ?? request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+  if (!header.trim() || header.trim() !== secret) {
     return { ok: false, error: "Missing or invalid X-Forward-Secret" };
   }
   return { ok: true };
