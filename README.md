@@ -857,7 +857,7 @@ Expected behavior from recent validation:
 - Routing config: `/api/models/alias`, `/api/combos*`, `/api/keys*`, `/api/pricing`
 - Usage/logs: `/api/usage/history`, `/api/usage/logs`, `/api/usage/request-logs`, `/api/usage/[connectionId]`
 - Cloud sync: `/api/sync/cloud`, `/api/sync/initialize`, `/api/cloud/*`
-- CLI helpers: `/api/cli-tools/claude-settings`, `/api/cli-tools/codex-settings`, `/api/cli-tools/droid-settings`, `/api/cli-tools/openclaw-settings`
+- CLI helpers: `/api/cli-tools/claude-settings`, `/api/cli-tools/codex-settings`, `/api/cli-tools/droid-settings`, `/api/cli-tools/openclaw-settings`, `/api/cli-tools/opencode-settings` (OpenCode Apply configures the 9Router provider and populates the native model picker with combos and models)
 
 ### Authentication Behavior
 
