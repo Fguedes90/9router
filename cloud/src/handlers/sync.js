@@ -24,6 +24,16 @@ export async function handleSync(request, env, ctx) {
     });
   }
 
+  // Require X-Sync-Secret when SYNC_SECRET is set in env (avoids unauthenticated sync)
+  const syncSecret = env?.SYNC_SECRET?.trim();
+  if (syncSecret) {
+    const headerSecret = request.headers.get("X-Sync-Secret")?.trim();
+    if (headerSecret !== syncSecret) {
+      log.warn("SYNC", "Missing or invalid X-Sync-Secret");
+      return jsonResponse({ error: "Missing or invalid X-Sync-Secret" }, 401);
+    }
+  }
+
   if (!machineId) {
     log.warn("SYNC", "Missing machineId in path");
     return jsonResponse({ error: "Missing machineId" }, 400);

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { validateBaseUrlForFetch } from "@/lib/validateBaseUrl";
 
 // POST /api/provider-nodes/validate - Validate API key against base URL
 export async function POST(request) {
@@ -8,6 +9,11 @@ export async function POST(request) {
 
     if (!baseUrl || !apiKey) {
       return NextResponse.json({ error: "Base URL and API key required" }, { status: 400 });
+    }
+
+    const urlCheck = validateBaseUrlForFetch(baseUrl);
+    if (!urlCheck.ok) {
+      return NextResponse.json({ error: urlCheck.error }, { status: 400 });
     }
 
     // Anthropic Compatible Validation

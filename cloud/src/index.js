@@ -9,7 +9,6 @@ import { handleCacheClear } from "./handlers/cache.js";
 import { handleSync } from "./handlers/sync.js";
 import { handleChat } from "./handlers/chat.js";
 import { handleVerify } from "./handlers/verify.js";
-import { handleTestClaude } from "./handlers/testClaude.js";
 import { handleForward } from "./handlers/forward.js";
 import { handleForwardRaw } from "./handlers/forwardRaw.js";
 import { createLandingPageResponse } from "./services/landingPage.js";
@@ -17,12 +16,26 @@ import { createLandingPageResponse } from "./services/landingPage.js";
 // Initialize translators at module load (static imports)
 initTranslators();
 
+// CORS: use ALLOWED_ORIGINS env (comma-separated) or "*" for backward compatibility
+function getCorsOrigin(env) {
+  const origins = env?.ALLOWED_ORIGINS?.trim();
+  return origins && origins.length > 0 ? origins.split(",").map((o) => o.trim())[0] : "*";
+}
+
+function getCorsHeaders(env) {
+  const origin = getCorsOrigin(env);
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "*"
+  };
+}
+
 // Helper to add CORS headers to response
-function addCorsHeaders(response) {
+function addCorsHeaders(response, env) {
   const newHeaders = new Headers(response.headers);
-  newHeaders.set("Access-Control-Allow-Origin", "*");
-  newHeaders.set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-  newHeaders.set("Access-Control-Allow-Headers", "*");
+  const cors = getCorsHeaders(env);
+  Object.entries(cors).forEach(([k, v]) => newHeaders.set(k, v));
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -53,11 +66,7 @@ const worker = {
     // CORS preflight
     if (request.method === "OPTIONS") {
       return new Response(null, {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "*"
-        }
+        headers: getCorsHeaders(env)
       });
     }
 
@@ -105,14 +114,14 @@ const worker = {
       if (path === "/v1/chat/completions" && request.method === "POST") {
         const response = await handleChat(request, env, ctx, null);
         log.response(response.status, Date.now() - startTime);
-        return addCorsHeaders(response);
+        return addCorsHeaders(response, env);
       }
 
       // New format: /v1/messages (Claude format)
       if (path === "/v1/messages" && request.method === "POST") {
         const response = await handleChat(request, env, ctx, null);
         log.response(response.status, Date.now() - startTime);
-        return addCorsHeaders(response);
+        return addCorsHeaders(response, env);
       }
 
       // New format: /v1/responses (OpenAI Responses API - Codex CLI)
@@ -126,7 +135,7 @@ const worker = {
       if (path === "/v1/verify" && request.method === "GET") {
         const response = await handleVerify(request, env, null);
         log.response(response.status, Date.now() - startTime);
-        return addCorsHeaders(response);
+        return addCorsHeaders(response, env);
       }
 
       // New format: /v1/api/chat (Ollama format)
@@ -176,23 +185,16 @@ const worker = {
         return response;
       }
 
-      // Test Claude - forward to Anthropic API
-      if (path === "/testClaude" && request.method === "POST") {
-        const response = await handleTestClaude(request);
-        log.response(response.status, Date.now() - startTime);
-        return response;
-      }
-
-      // Forward request to any endpoint
+      // Forward request to any endpoint (requires X-Forward-Secret, HTTPS-only)
       if (path === "/forward" && request.method === "POST") {
-        const response = await handleForward(request);
+        const response = await handleForward(request, env);
         log.response(response.status, Date.now() - startTime);
         return response;
       }
 
-      // Forward request via raw TCP socket (bypasses CF auto headers)
+      // Forward request via raw TCP socket (requires X-Forward-Secret, HTTPS-only)
       if (path === "/forward-raw" && request.method === "POST") {
-        const response = await handleForwardRaw(request);
+        const response = await handleForwardRaw(request, env);
         log.response(response.status, Date.now() - startTime);
         return response;
       }

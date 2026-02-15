@@ -41,9 +41,15 @@ export async function PATCH(request) {
         }
       } else {
         // First time setting password, no current password needed
-        // Allow empty currentPassword or default "123456"
+        // In production, do not accept default "123456" as current (force changing default first)
+        if (process.env.NODE_ENV === "production" && body.currentPassword === "123456") {
+          return NextResponse.json(
+            { error: "Change the default password before setting a new one" },
+            { status: 400 }
+          );
+        }
         if (body.currentPassword && body.currentPassword !== "123456") {
-           return NextResponse.json({ error: "Invalid current password" }, { status: 401 });
+          return NextResponse.json({ error: "Invalid current password" }, { status: 401 });
         }
       }
 

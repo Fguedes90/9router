@@ -1,3 +1,5 @@
+import { checkForwardAuth, validateForwardUrl, jsonError } from "../utils/forwardAuth.js";
+
 // CF headers to remove
 const CF_HEADERS = [
   "cf-connecting-ip", "cf-connecting-ip6", "cf-ray", "cf-visitor",
@@ -5,15 +7,26 @@ const CF_HEADERS = [
   "x-real-ip", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-host"
 ];
 
-// Forward request to any endpoint
-export async function handleForward(request) {
+// Forward request to any endpoint (requires X-Forward-Secret and HTTPS-only, no private IPs)
+export async function handleForward(request, env) {
   try {
+    const auth = checkForwardAuth(request, env || {});
+    if (!auth.ok) return jsonError(auth.error, 401);
+
     const url = new URL(request.url);
     const clientIp = request.headers.get("CF-Connecting-IP") || "";
     const { targetUrl, headers = {}, body } = await request.json();
-    
+
     if (!targetUrl) {
       return new Response(JSON.stringify({ error: "targetUrl is required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    const urlCheck = validateForwardUrl(targetUrl);
+    if (!urlCheck.ok) {
+      return new Response(JSON.stringify({ error: urlCheck.error }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
       });

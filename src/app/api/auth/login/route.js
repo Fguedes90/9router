@@ -4,12 +4,19 @@ import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import { cookies } from "next/headers";
 
+const DEFAULT_JWT_SECRET = "9router-default-secret-change-me";
 const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "9router-default-secret-change-me"
+  process.env.JWT_SECRET || DEFAULT_JWT_SECRET
 );
 
 export async function POST(request) {
   try {
+    if (process.env.NODE_ENV === "production" && (!process.env.JWT_SECRET || process.env.JWT_SECRET === DEFAULT_JWT_SECRET)) {
+      return NextResponse.json(
+        { error: "Server misconfigured: set JWT_SECRET in production" },
+        { status: 503 }
+      );
+    }
     const { password } = await request.json();
     const settings = await getSettings();
 

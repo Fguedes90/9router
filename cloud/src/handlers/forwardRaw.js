@@ -1,12 +1,24 @@
 import { connect } from "cloudflare:sockets";
+import { checkForwardAuth, validateForwardUrl, jsonError } from "../utils/forwardAuth.js";
 
-// Forward request via raw TCP socket (bypasses CF auto headers)
-export async function handleForwardRaw(request) {
+// Forward request via raw TCP socket (bypasses CF auto headers). Requires auth and HTTPS-only.
+export async function handleForwardRaw(request, env) {
   try {
+    const auth = checkForwardAuth(request, env || {});
+    if (!auth.ok) return jsonError(auth.error, 401);
+
     const { targetUrl, headers = {}, body } = await request.json();
-    
+
     if (!targetUrl) {
       return new Response(JSON.stringify({ error: "targetUrl is required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    const urlCheck = validateForwardUrl(targetUrl);
+    if (!urlCheck.ok) {
+      return new Response(JSON.stringify({ error: urlCheck.error }), {
         status: 400,
         headers: { "Content-Type": "application/json" }
       });

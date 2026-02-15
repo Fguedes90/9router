@@ -2,16 +2,35 @@ import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { isPublicApiPath } from "./lib/middlewareAuth.js";
 
+const DEFAULT_JWT_SECRET = "9router-default-secret-change-me";
 const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "9router-default-secret-change-me"
+  process.env.JWT_SECRET || DEFAULT_JWT_SECRET
 );
 
-export async function middleware(request) {
+function isProduction() {
+  return process.env.NODE_ENV === "production";
+}
+function isDefaultJwtSecret() {
+  return !process.env.JWT_SECRET || process.env.JWT_SECRET === DEFAULT_JWT_SECRET;
+}
+
+export default async function middleware(request) {
   const { pathname } = request.nextUrl;
 
   // Public API and v1 proxy (API key auth in handler)
   if (pathname.startsWith("/v1") || isPublicApiPath(pathname)) {
     return NextResponse.next();
+  }
+
+  // In production, refuse to verify if JWT_SECRET is still default (misconfiguration)
+  if (pathname.startsWith("/api/") && isProduction() && isDefaultJwtSecret()) {
+    return NextResponse.json(
+      { error: "Server misconfigured: set JWT_SECRET in production" },
+      { status: 503 }
+    );
+  }
+  if (pathname.startsWith("/dashboard") && isProduction() && isDefaultJwtSecret()) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Protect dashboard and all other API routes with session

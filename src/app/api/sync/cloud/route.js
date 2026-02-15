@@ -11,6 +11,14 @@ async function getResolvedCloudUrl() {
   return await getCloudUrl();
 }
 
+/** Headers for Cloud Worker requests (sync endpoints require X-Sync-Secret when SYNC_SECRET is set on worker) */
+function cloudSyncHeaders(extra = {}) {
+  const headers = { "Content-Type": "application/json", ...extra };
+  const secret = process.env.CLOUD_SYNC_SECRET?.trim();
+  if (secret) headers["X-Sync-Secret"] = secret;
+  return headers;
+}
+
 async function fetchWithTimeout(url, options = {}, timeoutMs = CLOUD_SYNC_TIMEOUT_MS) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -86,7 +94,7 @@ export async function syncToCloud(machineId, createdKey = null) {
     // Send to Cloud
     response = await fetchWithTimeout(`${cloudUrl}/sync/${machineId}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: cloudSyncHeaders(),
       body: JSON.stringify({
         providers,
         modelAliases,
@@ -149,10 +157,7 @@ async function syncAndVerify(machineId, createdKey, existingKeys) {
     const cloudUrl = await getResolvedCloudUrl();
     const pingResponse = await fetchWithTimeout(`${cloudUrl}/${machineId}/v1/verify`, {
       method: "GET",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      }
+      headers: cloudSyncHeaders({ "Authorization": `Bearer ${apiKey}` })
     });
 
     if (pingResponse.ok) {
@@ -188,7 +193,8 @@ async function handleDisable(machineId, request) {
   let response;
   try {
     response = await fetchWithTimeout(`${cloudUrl}/sync/${machineId}`, {
-      method: "DELETE"
+      method: "DELETE",
+      headers: cloudSyncHeaders()
     });
   } catch (error) {
     const isTimeout = error?.name === "AbortError";
@@ -262,7 +268,7 @@ async function handleCheck() {
   }
 
   try {
-    const res = await fetchWithTimeout(`${cloudUrl}/health`, { method: "GET" }, 5000);
+    const res = await fetchWithTimeout(`${cloudUrl}/health`, { method: "GET", headers: cloudSyncHeaders() }, 5000);
     if (res.ok) {
       return NextResponse.json({ success: true, message: "Worker is running" });
     }
