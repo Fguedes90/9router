@@ -39,6 +39,13 @@ describe("middleware (path classification)", () => {
     }
   });
 
+  it("classifies /api/v1/* as public (prefix ends with slash, no double-slash)", async () => {
+    const { isPublicApiPath } = await import(pathToFileURL(middlewareAuthPath).href);
+    assert.strictEqual(isPublicApiPath("/api/v1/chat/completions"), true);
+    assert.strictEqual(isPublicApiPath("/api/v1/messages"), true);
+    assert.strictEqual(isPublicApiPath("/api/v1/verify"), true);
+  });
+
   it("v1 proxy paths are public (checked via pathname.startsWith in middleware)", async () => {
     assert.ok("/v1/chat/completions".startsWith("/v1"));
     assert.ok("/v1".startsWith("/v1"));

@@ -15,7 +15,9 @@ export const PUBLIC_API_PREFIXES = [
  * @returns {boolean}
  */
 export function isPublicApiPath(pathname) {
-  return PUBLIC_API_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(prefix + "/")
-  );
+  return PUBLIC_API_PREFIXES.some((prefix) => {
+    if (pathname === prefix) return true;
+    if (prefix.endsWith("/")) return pathname.startsWith(prefix);
+    return pathname.startsWith(prefix + "/");
+  });
 }

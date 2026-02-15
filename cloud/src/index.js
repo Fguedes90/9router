@@ -16,25 +16,30 @@ import { createLandingPageResponse } from "./services/landingPage.js";
 // Initialize translators at module load (static imports)
 initTranslators();
 
-// CORS: use ALLOWED_ORIGINS env (comma-separated) or "*" for backward compatibility
-function getCorsOrigin(env) {
-  const origins = env?.ALLOWED_ORIGINS?.trim();
-  return origins && origins.length > 0 ? origins.split(",").map((o) => o.trim())[0] : "*";
+// CORS: use ALLOWED_ORIGINS env (comma-separated). Returns request origin if allowed, or "*" if no list.
+function getCorsOrigin(env, request) {
+  const raw = env?.ALLOWED_ORIGINS?.trim();
+  const allowed = raw ? raw.split(",").map((o) => o.trim()).filter(Boolean) : [];
+  if (allowed.length === 0) return "*";
+  const requestOrigin = request?.headers?.get("Origin")?.trim();
+  if (requestOrigin && allowed.includes(requestOrigin)) return requestOrigin;
+  return null;
 }
 
-function getCorsHeaders(env) {
-  const origin = getCorsOrigin(env);
-  return {
-    "Access-Control-Allow-Origin": origin,
+function getCorsHeaders(env, request) {
+  const origin = getCorsOrigin(env, request);
+  const headers = {
     "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "*"
   };
+  if (origin) headers["Access-Control-Allow-Origin"] = origin;
+  return headers;
 }
 
 // Helper to add CORS headers to response
-function addCorsHeaders(response, env) {
+function addCorsHeaders(response, env, request) {
   const newHeaders = new Headers(response.headers);
-  const cors = getCorsHeaders(env);
+  const cors = getCorsHeaders(env, request);
   Object.entries(cors).forEach(([k, v]) => newHeaders.set(k, v));
   return new Response(response.body, {
     status: response.status,
@@ -66,7 +71,7 @@ const worker = {
     // CORS preflight
     if (request.method === "OPTIONS") {
       return new Response(null, {
-        headers: getCorsHeaders(env)
+        headers: getCorsHeaders(env, request)
       });
     }
 
@@ -114,14 +119,14 @@ const worker = {
       if (path === "/v1/chat/completions" && request.method === "POST") {
         const response = await handleChat(request, env, ctx, null);
         log.response(response.status, Date.now() - startTime);
-        return addCorsHeaders(response, env);
+        return addCorsHeaders(response, env, request);
       }
 
       // New format: /v1/messages (Claude format)
       if (path === "/v1/messages" && request.method === "POST") {
         const response = await handleChat(request, env, ctx, null);
         log.response(response.status, Date.now() - startTime);
-        return addCorsHeaders(response, env);
+        return addCorsHeaders(response, env, request);
       }
 
       // New format: /v1/responses (OpenAI Responses API - Codex CLI)
@@ -135,7 +140,7 @@ const worker = {
       if (path === "/v1/verify" && request.method === "GET") {
         const response = await handleVerify(request, env, null);
         log.response(response.status, Date.now() - startTime);
-        return addCorsHeaders(response, env);
+        return addCorsHeaders(response, env, request);
       }
 
       // New format: /v1/api/chat (Ollama format)
