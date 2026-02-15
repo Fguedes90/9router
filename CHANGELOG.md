@@ -1,3 +1,60 @@
+# Changelog — Security corrections by Francis
+
+The following security fixes were applied after an internal audit. Some were already committed; others were completed later.
+
+---
+
+## Summary of fixes
+
+| Item | Description | Status |
+|------|-------------|--------|
+| **/api/* routes** | Middleware requires JWT on protected routes; public: login, logout, require-login, /api/v1/*, /api/cloud/auth | ✅ Applied |
+| **OAuth redirect_uri** | Validation in `getAllowedRedirectUri`: only same-origin or localhost/127.0.0.1 with path `/callback` | ✅ Applied |
+| **Sync/cloud Host** | Base URL no longer from `Host` header; uses `NEXT_PUBLIC_BASE_URL` / `BASE_URL` / localhost | ✅ Applied |
+| **PATCH /api/settings** | Allowlist in `filterAllowedSettings`; only allowed keys are applied (mass assignment mitigated) | ✅ Applied |
+| **JWT_SECRET in production** | Login and middleware return 503 if `JWT_SECRET` is default or unset in production | ✅ Applied |
+| **Password "123456"** | In production, "123456" is not accepted as current password when changing (forces changing default first) | ✅ Applied |
+| **Cloud: /forward and /forward-raw** | Auth via `X-Forward-Secret` (FORWARD_SECRET); HTTPS only; block private IPs (SSRF) | ✅ Applied |
+| **Cloud: /sync/:machineId** | When `SYNC_SECRET` is set, requires `X-Sync-Secret` header (app sends `CLOUD_SYNC_SECRET`) | ✅ Applied |
+| **Provider-nodes validate** | `validateBaseUrlForFetch`: HTTPS only; block localhost and private IPs (SSRF) | ✅ Applied |
+| **CORS on worker** | `ALLOWED_ORIGINS` on worker restricts origins; without env keeps `*` for compatibility | ✅ Applied |
+| **testClaude on worker** | Route and import removed (missing module was breaking the worker) | ✅ Applied |
+| **Cloud API_KEY_SECRET** | Worker uses `env.API_KEY_SECRET` when set; legacy fallback for compatibility | ✅ Applied |
+
+---
+
+## Files changed / created
+
+- **`src/middleware.js`** — Protection of `/api/*` routes with JWT cookie verification; public prefix list.
+- **`src/lib/oauth/utils/redirectUri.js`** — `getAllowedRedirectUri(origin, requestedRedirectUri)`.
+- **`src/lib/settingsAllowlist.js`** — `ALLOWED_SETTINGS_KEYS` and `filterAllowedSettings(body)`.
+- **`src/lib/validateBaseUrl.js`** — `validateBaseUrlForFetch(baseUrl)` (SSRF in provider-nodes).
+- **`src/app/api/settings/route.js`** — Uses `filterAllowedSettings`; in production rejects "123456" as current.
+- **`src/app/api/auth/login/route.js`** — In production requires non-default `JWT_SECRET`; 503 if misconfigured.
+- **`src/app/api/sync/cloud/route.js`** — Base URL from env, not Host header.
+- **`src/app/api/provider-nodes/validate/route.js`** — Validates `baseUrl` with `validateBaseUrlForFetch`.
+- **`cloud/src/handlers/forward.js`**, **`cloud/src/handlers/forwardRaw.js`** — Auth and URL validation (`forwardAuth.js`).
+- **`cloud/src/handlers/sync.js`** — Checks `X-Sync-Secret` when `SYNC_SECRET` is set.
+- **`cloud/src/index.js`** — CORS via `ALLOWED_ORIGINS`; removal of `/testClaude`.
+- **`cloud/src/utils/apiKey.js`** — `parseApiKey(apiKey, apiKeySecret)` uses `env.API_KEY_SECRET`.
+- **`cloud/src/handlers/verify.js`**, **chat.js**, **cache.js** — Pass `env?.API_KEY_SECRET` to `parseApiKey`.
+- **`tests/security/`** — Tests for redirectUri, settingsAllowlist, and middleware (path classification + integration).
+- **`.env.example`** — Documentation for `API_KEY_SECRET` on the worker.
+
+---
+
+## Security tests
+
+Run:
+
+```bash
+npm run test:security
+```
+
+Tests live in `tests/security/`.
+
+---
+
 # v0.2.66 (2026-02-06)
 
 ## Features
