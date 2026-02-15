@@ -151,7 +151,7 @@ export class CursorExecutor extends BaseExecutor {
       "x-amzn-trace-id": `Root=${crypto.randomUUID()}`,
       "x-client-key": crypto.createHash("sha256").update(cleanToken).digest("hex"),
       "x-cursor-checksum": this.generateChecksum(machineId),
-      "x-cursor-client-version": "2.3.41",
+      "x-cursor-client-version": "2.4.37",
       "x-cursor-client-type": "ide",
       "x-cursor-client-os": process.platform === "win32" ? "windows" : process.platform === "darwin" ? "macos" : "linux",
       "x-cursor-client-arch": process.arch === "arm64" ? "aarch64" : "x64",

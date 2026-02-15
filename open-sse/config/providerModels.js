@@ -101,8 +101,17 @@ export const PROVIDER_MODELS = {
     { id: "claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
     { id: "claude-haiku-4.5", name: "Claude Haiku 4.5" },
   ],
-  cu: [  // Cursor IDE (only default is accepted by Cursor API; named models return "AI Model Not Found")
+  cu: [  // Cursor IDE – live list from AvailableModels RPC; static fallback (see docs/CURSOR_MODELS.md)
+    // Latest variant of each model only; thinking preferred over normal
     { id: "default", name: "Auto (Server Picks)" },
+    { id: "claude-4.6-opus-high-thinking", name: "Claude 4.6 Opus Thinking" },
+    { id: "claude-4.5-sonnet-thinking", name: "Claude 4.5 Sonnet Thinking" },
+    { id: "claude-4.5-haiku-thinking", name: "Claude 4.5 Haiku Thinking" },
+    { id: "gpt-5.3-codex", name: "GPT 5.3 Codex" },
+    { id: "gemini-3-pro", name: "Gemini 3 Pro" },
+    { id: "gemini-3-flash", name: "Gemini 3 Flash" },
+    { id: "grok-code-fast-1", name: "Grok Code Fast 1" },
+    { id: "composer-1", name: "Composer 1" },
   ],
 
   // API Key Providers (alias = id)
