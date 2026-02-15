@@ -25,7 +25,8 @@ export async function PATCH(request) {
   try {
     const body = await request.json();
 
-    // If updating password, hash it
+    // Password may only be set via newPassword flow (hashed here). Never trust body.password.
+    let hashedNewPassword = undefined;
     if (body.newPassword) {
       const settings = await getSettings();
       const currentHash = settings.password;
@@ -54,14 +55,14 @@ export async function PATCH(request) {
       }
 
       const salt = await bcrypt.genSalt(10);
-      body.password = await bcrypt.hash(body.newPassword, salt);
+      hashedNewPassword = await bcrypt.hash(body.newPassword, salt);
       delete body.newPassword;
       delete body.currentPassword;
     }
 
     const updates = filterAllowedSettings(body);
-    // Password is not in allowlist; only add it when we set it (hashed) in the newPassword block above
-    if (body.password !== undefined) updates.password = body.password;
+    // Only set password when we hashed it from newPassword above; ignore body.password to prevent bypass
+    if (hashedNewPassword !== undefined) updates.password = hashedNewPassword;
     const settings = await updateSettings(updates);
     const { password, ...safeSettings } = settings;
     return NextResponse.json(safeSettings);
