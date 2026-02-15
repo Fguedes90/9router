@@ -46,6 +46,14 @@ export const CLI_TOOLS = {
     description: "Open Claw AI Assistant",
     configType: "custom",
   },
+  opencode: {
+    id: "opencode",
+    name: "OpenCode",
+    icon: "terminal",
+    color: "#000000",
+    description: "Open-source AI coding agent (uses 9Router as provider)",
+    configType: "custom",
+  },
   cursor: {
     id: "cursor",
     name: "Cursor",
