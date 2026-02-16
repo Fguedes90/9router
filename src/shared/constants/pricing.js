@@ -659,26 +659,54 @@ export const DEFAULT_PRICING = {
 
   // GLM
   glm: {
+    "glm-5": {
+      input: 1.00,
+      output: 3.20,
+      cached: 0.20,
+      reasoning: 4.80,
+      cache_creation: 1.00
+    },
+    "glm-5-code": {
+      input: 1.20,
+      output: 5.00,
+      cached: 0.30,
+      reasoning: 7.50,
+      cache_creation: 1.20
+    },
     "glm-4.7": {
-      input: 0.75,
-      output: 3.00,
-      cached: 0.375,
-      reasoning: 4.50,
-      cache_creation: 0.75
+      input: 0.60,
+      output: 2.20,
+      cached: 0.11,
+      reasoning: 3.30,
+      cache_creation: 0.60
     },
     "glm-4.6": {
-      input: 0.50,
-      output: 2.00,
-      cached: 0.25,
-      reasoning: 3.00,
-      cache_creation: 0.50
+      input: 0.60,
+      output: 2.20,
+      cached: 0.11,
+      reasoning: 3.30,
+      cache_creation: 0.60
     },
     "glm-4.6v": {
-      input: 0.75,
-      output: 3.00,
-      cached: 0.375,
-      reasoning: 4.50,
-      cache_creation: 0.75
+      input: 0.30,
+      output: 0.90,
+      cached: 0.05,
+      reasoning: 1.35,
+      cache_creation: 0.30
+    },
+    "glm-4.5": {
+      input: 0.60,
+      output: 2.20,
+      cached: 0.11,
+      reasoning: 3.30,
+      cache_creation: 0.60
+    },
+    "glm-4.5-air": {
+      input: 0.20,
+      output: 1.10,
+      cached: 0.03,
+      reasoning: 1.65,
+      cache_creation: 0.20
     }
   },
 
