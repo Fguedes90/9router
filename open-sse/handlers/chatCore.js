@@ -13,6 +13,7 @@ import { handleBypassRequest } from "../utils/bypassHandler.js";
 import { saveRequestUsage, trackPendingRequest, appendRequestLog, saveRequestDetail } from "@/lib/usageDb.js";
 import { getExecutor } from "../executors/index.js";
 import { convertResponsesStreamToJson } from "../transformer/streamToJsonConverter.js";
+import { calculateThroughput, categorizeInputTokens, categorizeOutputTokens } from "../utils/throughputCalc.js";
 
 /**
  * Translate non-streaming response to OpenAI format
@@ -768,6 +769,13 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     }
 
     const totalLatency = Date.now() - requestStartTime;
+    const usageData = translatedResponse?.usage || { prompt_tokens: 0, completion_tokens: 0 };
+    
+    // Calculate throughput metrics
+    const throughput = calculateThroughput(usageData.completion_tokens, totalLatency);
+    const inputCategory = categorizeInputTokens(usageData.prompt_tokens);
+    const outputCategory = categorizeOutputTokens(usageData.completion_tokens);
+    
     const requestDetail = {
       provider: provider || "unknown",
       model: model || "unknown",
@@ -777,7 +785,10 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
         ttft: totalLatency,
         total: totalLatency
       },
-      tokens: usage || { prompt_tokens: 0, completion_tokens: 0 },
+      tokens: usageData,
+      throughput: throughput,
+      input_category: inputCategory,
+      output_category: outputCategory,
       request: extractRequestConfig(body, stream),
       providerRequest: finalBody || translatedBody || null,
       providerResponse: responseBody || null,
@@ -831,16 +842,29 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     // contentObj is object { content, thinking }
     streamUsage = usage;
     
+    const completionTime = Date.now();
+    const totalLatency = completionTime - requestStartTime;
+    const outputDurationMs = ttftAt ? completionTime - ttftAt : totalLatency;
+    const usageData = usage || { prompt_tokens: 0, completion_tokens: 0 };
+    
+    // Calculate throughput metrics for streaming
+    const throughput = calculateThroughput(usageData.completion_tokens, totalLatency, outputDurationMs);
+    const inputCategory = categorizeInputTokens(usageData.prompt_tokens);
+    const outputCategory = categorizeOutputTokens(usageData.completion_tokens);
+    
     const updatedDetail = {
       provider: provider || "unknown",
       model: model || "unknown",
       connectionId: connectionId || undefined,
       timestamp: new Date().toISOString(),
       latency: {
-        ttft: ttftAt ? ttftAt - requestStartTime : Date.now() - requestStartTime,
-        total: Date.now() - requestStartTime
+        ttft: ttftAt ? ttftAt - requestStartTime : totalLatency,
+        total: totalLatency
       },
-      tokens: usage || { prompt_tokens: 0, completion_tokens: 0 },
+      tokens: usageData,
+      throughput: throughput,
+      input_category: inputCategory,
+      output_category: outputCategory,
       request: extractRequestConfig(body, stream),
       providerRequest: finalBody || translatedBody || null,
       providerResponse: contentObj.content || "[Empty streaming response]",

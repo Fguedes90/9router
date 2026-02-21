@@ -24,7 +24,7 @@ async function getObservabilityConfig() {
 
     return {
       enabled,
-      maxRecords: settings.observabilityMaxRecords || parseInt(process.env.OBSERVABILITY_MAX_RECORDS || '1000', 10),
+      maxRecords: settings.observabilityMaxRecords || parseInt(process.env.OBSERVABILITY_MAX_RECORDS || '10000', 10),
       batchSize: settings.observabilityBatchSize || parseInt(process.env.OBSERVABILITY_BATCH_SIZE || '20', 10),
       flushIntervalMs: settings.observabilityFlushIntervalMs || parseInt(process.env.OBSERVABILITY_FLUSH_INTERVAL_MS || '5000', 10),
       maxJsonSize: (settings.observabilityMaxJsonSize || parseInt(process.env.OBSERVABILITY_MAX_JSON_SIZE || '1024', 10)) * 1024
@@ -33,7 +33,7 @@ async function getObservabilityConfig() {
     console.error("[requestDetailsDb] Failed to load observability config:", error);
     return {
       enabled: true,
-      maxRecords: 1000,
+      maxRecords: 10000,
       batchSize: 20,
       flushIntervalMs: 5000,
       maxJsonSize: 1024 * 1024
@@ -179,7 +179,16 @@ export async function getRequestDetailsDb() {
         ON request_details(connection_id);
       CREATE INDEX IF NOT EXISTS idx_status
         ON request_details(status);
+      CREATE INDEX IF NOT EXISTS idx_provider_model_timestamp
+        ON request_details(provider, model, timestamp DESC);
     `);
+
+    // Add new columns for throughput monitoring (preserves existing data)
+    // SQLite requires separate exec() calls for each ALTER TABLE
+    try { db.exec(`ALTER TABLE request_details ADD COLUMN throughput_tokens_per_sec REAL;`); } catch (e) { /* column may already exist */ }
+    try { db.exec(`ALTER TABLE request_details ADD COLUMN output_duration_ms INTEGER;`); } catch (e) { /* column may already exist */ }
+    try { db.exec(`ALTER TABLE request_details ADD COLUMN input_category TEXT;`); } catch (e) { /* column may already exist */ }
+    try { db.exec(`ALTER TABLE request_details ADD COLUMN output_category TEXT;`); } catch (e) { /* column may already exist */ }
 
     dbInstance = db;
 
@@ -228,8 +237,9 @@ async function flushToDatabase() {
     const insertStmt = db.prepare(`
       INSERT OR REPLACE INTO request_details
       (id, provider, model, connection_id, timestamp, status, latency, tokens,
-       request, provider_request, provider_response, response)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       request, provider_request, provider_response, response,
+       throughput_tokens_per_sec, output_duration_ms, input_category, output_category)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const deleteStmt = db.prepare(`
@@ -271,7 +281,11 @@ async function flushToDatabase() {
           safeJsonStringify(item.request || {}, maxJsonSize),
           safeJsonStringify(item.providerRequest || {}, maxJsonSize),
           safeJsonStringify(item.providerResponse || {}, maxJsonSize),
-          safeJsonStringify(item.response || {}, maxJsonSize)
+          safeJsonStringify(item.response || {}, maxJsonSize),
+          item.throughputTokensPerSec || null,
+          item.outputDurationMs || null,
+          item.inputCategory || null,
+          item.outputCategory || null
         );
       }
 
@@ -476,7 +490,11 @@ export async function getRequestDetails(filter = {}) {
     request: safeJsonParse(row.request),
     providerRequest: safeJsonParse(row.provider_request),
     providerResponse: safeJsonParse(row.provider_response),
-    response: safeJsonParse(row.response)
+    response: safeJsonParse(row.response),
+    throughputTokensPerSec: row.throughput_tokens_per_sec,
+    outputDurationMs: row.output_duration_ms,
+    inputCategory: row.input_category,
+    outputCategory: row.output_category
   }));
 
   return {
@@ -524,6 +542,10 @@ export async function getRequestDetailById(id) {
     request: safeJsonParse(row.request),
     providerRequest: safeJsonParse(row.provider_request),
     providerResponse: safeJsonParse(row.provider_response),
-    response: safeJsonParse(row.response)
+    response: safeJsonParse(row.response),
+    throughputTokensPerSec: row.throughput_tokens_per_sec,
+    outputDurationMs: row.output_duration_ms,
+    inputCategory: row.input_category,
+    outputCategory: row.output_category
   };
 }

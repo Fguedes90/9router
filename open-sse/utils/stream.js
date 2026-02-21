@@ -55,6 +55,7 @@ export function createSSEStream(options = {}) {
   let accumulatedContent = "";
   let accumulatedThinking = "";
   let ttftAt = null;
+  let lastChunkAt = null;
 
   return new TransformStream({
     transform(chunk, controller) {
@@ -228,6 +229,7 @@ export function createSSEStream(options = {}) {
     },
 
     flush(controller) {
+      lastChunkAt = Date.now();
       trackPendingRequest(model, provider, connectionId, false);
       try {
         const remaining = sharedDecoder.decode();
@@ -257,7 +259,7 @@ export function createSSEStream(options = {}) {
             onStreamComplete({
               content: accumulatedContent,
               thinking: accumulatedThinking
-            }, usage, ttftAt);
+            }, usage, ttftAt, lastChunkAt);
           }
           return;
         }
@@ -319,7 +321,7 @@ export function createSSEStream(options = {}) {
           onStreamComplete({
             content: accumulatedContent,
             thinking: accumulatedThinking
-          }, state?.usage, ttftAt);
+          }, state?.usage, ttftAt, lastChunkAt);
         }
       } catch (error) {
         console.log("Error in flush:", error);

@@ -23,6 +23,7 @@ export { default as KiroOAuthWrapper } from "./KiroOAuthWrapper";
 export { default as KiroSocialOAuthModal } from "./KiroSocialOAuthModal";
 export { default as CursorAuthModal } from "./CursorAuthModal";
 export { default as SegmentedControl } from "./SegmentedControl";
+export { default as ThroughputHeatmap } from "./ThroughputHeatmap";
 
 // Layouts
 export * from "./layouts";

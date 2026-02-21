@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { UsageStats, RequestLogger, CardSkeleton, SegmentedControl } from "@/shared/components";
 import ProviderLimits from "./components/ProviderLimits";
 import RequestDetailsTab from "./components/RequestDetailsTab";
 
-export default function UsagePage() {
+function UsagePageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
@@ -54,5 +54,13 @@ export default function UsagePage() {
       )}
       {activeTab === "details" && <RequestDetailsTab />}
     </div>
+  );
+}
+
+export default function UsagePage() {
+  return (
+    <Suspense fallback={<CardSkeleton />}>
+      <UsagePageContent />
+    </Suspense>
   );
 }
